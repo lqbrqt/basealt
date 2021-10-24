@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/Users/lab0rat/CLionProjects/task2/main.cpp
+/home/kostjaog/Documents/GitHub/basealt/CLionProjects/task2/main.cpp
 iostream
 -
 fstream

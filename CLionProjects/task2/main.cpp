@@ -6,6 +6,9 @@
 #include <string>
 #include <memory>
 #include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <sstream>
 
 #define CHANGES_LIST_FILENAME "changes.file"
 
@@ -54,10 +57,59 @@ void clear(){ //Функция очистки журнал проектов
     }
 }
 
+void generate_initial_rpm_changelist(){
+    std::string str = exec("rpm -Va");
+    std::ofstream output;
+
+    output.open("changelist.file");
+
+    if (output.is_open())
+        output << str;
+
+    output.close();
+}
+
+void parse_changes_line(const std::string& row, std::string& changes, std::string& modifier, std::string& path){
+    std::istringstream iss(row);
+    std::string s;
+
+    getline( iss, changes, ' ' );
+    getline( iss, modifier, ' ' );
+    if(!getline( iss, path, ' ' )){
+        path = modifier;
+        modifier = "";
+    };
+}
+
+void alert(std::string& outline){
+    std::cerr << "Новые изменения: " << outline << std::endl;
+}
+
 void run_RPM_verify(){
 
-    const char* binaryPath = "/usr/bin/rpm";
-    const char* arg1 = "-Va";
+    if(!is_file_exists(CHANGES_LIST_FILENAME)){
+        std::cerr << "Файл с изменениями не найден!\n";
+    }
+
+
+    std::ifstream fs;
+    fs.open(CHANGES_LIST_FILENAME, std::fstream::in);
+    std::string line;
+
+    while (fs.peek()!='\n' &&std::getline(fs, line)) {
+        std::string changes, modifier, path;
+        parse_changes_line(line, changes, modifier, path);
+
+        std::string str = exec(("rpm -Vf " + path).c_str());
+        std::string newChanges, newModifier, newPath;
+
+        if(newChanges!=changes){
+            alert(newChanges)
+        }
+
+
+    }
+
 
     std::string str = exec("brew list");
     std::ofstream output;
