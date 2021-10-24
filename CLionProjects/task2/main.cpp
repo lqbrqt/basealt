@@ -49,7 +49,9 @@ std::string exec(const char* cmd) {
 
 bool is_file_exists (const std::string& name) { //Функция проверки существования искомого файла
     std::ifstream f(name.c_str());
-    return f.good();
+    bool isExist =  f.good();
+    f.close();
+    return isExist;
 }
 
 void clear(){ //Функция очистки журнал проектов
@@ -62,7 +64,7 @@ void generate_initial_rpm_changelist(){
     std::string str = exec("rpm -Va");
     std::ofstream output;
 
-    output.open("changelist.file");
+    output.open(CHANGES_LIST_FILENAME);
 
     if (output.is_open())
         output << str;
@@ -72,13 +74,13 @@ void generate_initial_rpm_changelist(){
 
 void parse_changes_line(const std::string& row, std::string& changes, std::string& modifier, std::string& path){
     std::istringstream iss(row);
-    std::string s;
+    std::string s, tmp;
 
     getline( iss, changes, ' ' );
+    getline( iss, tmp, ' ' );
     getline( iss, modifier, ' ' );
-    if(!getline( iss, path, ' ' )){
-        path = modifier;
-        modifier = "";
+    if(!getline( iss, path, ' ' ) || path == ""){
+        getline( iss, path, ' ' );
     };
 }
 
@@ -94,26 +96,30 @@ void run_RPM_verify(){
     }
 
     std::ifstream fs;
-    fs.open(CHANGES_LIST_FILENAME, std::fstream::in);
+    fs.open(CHANGES_LIST_FILENAME);
     std::string line;
 
     std::vector<std::string> newOutChanges;
 
-    while (fs.peek()!='\n' &&std::getline(fs, line)) {
-        std::string changes, modifier, path;
-        parse_changes_line(line, changes, modifier, path);
 
-        std::string str = exec(("rpm -Vf " + path).c_str());
-        std::string newChanges, newModifier, newPath;
+    if(fs.is_open())
+        while (fs.peek()!='\n' && std::getline(fs, line)) {
+            std::string changes, modifier, path;
+            parse_changes_line(line, changes, modifier, path);
 
-        parse_changes_line(str, newChanges, newModifier, newPath);
+            if(changes == "missing") continue;
 
-        if(newChanges!=changes){
-            alert(newChanges);
+            std::string str = exec(("rpm -Vf " + path).c_str());
+            std::string newChanges, newModifier, newPath;
+
+            parse_changes_line(str, newChanges, newModifier, newPath);
+
+            if(newChanges!=changes){
+                alert(newChanges);
+            }
+
+            newOutChanges.push_back(str);
         }
-
-        newOutChanges.push_back(str);
-    }
 
     std::ofstream output;
 
@@ -138,8 +144,5 @@ int main(int argc, char **argv) {
     }else if(strcmp(argv[1], "CLEAR") == 0){
         clear();
     }
-
-
-    run_RPM_verify();
     return 0;
 }
