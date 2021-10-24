@@ -9,6 +9,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 #define CHANGES_LIST_FILENAME "changes.file"
 
@@ -83,6 +84,7 @@ void parse_changes_line(const std::string& row, std::string& changes, std::strin
 
 void alert(std::string& outline){
     std::cerr << "Новые изменения: " << outline << std::endl;
+    exec(("logger -p authpriv.warning -t sudo \"Новые изменения: " + outline + "\"").c_str());
 }
 
 void run_RPM_verify(){
@@ -91,10 +93,11 @@ void run_RPM_verify(){
         std::cerr << "Файл с изменениями не найден!\n";
     }
 
-
     std::ifstream fs;
     fs.open(CHANGES_LIST_FILENAME, std::fstream::in);
     std::string line;
+
+    std::vector<std::string> newOutChanges;
 
     while (fs.peek()!='\n' &&std::getline(fs, line)) {
         std::string changes, modifier, path;
@@ -103,21 +106,22 @@ void run_RPM_verify(){
         std::string str = exec(("rpm -Vf " + path).c_str());
         std::string newChanges, newModifier, newPath;
 
+        parse_changes_line(str, newChanges, newModifier, newPath);
+
         if(newChanges!=changes){
-            alert(newChanges)
+            alert(newChanges);
         }
 
-
+        newOutChanges.push_back(str);
     }
 
-
-    std::string str = exec("brew list");
     std::ofstream output;
 
-    output.open("log.txt");
+    output.open(CHANGES_LIST_FILENAME);
 
-    if (output.is_open())
-        output << str;
+    for(auto it : newOutChanges){
+        output << it;
+    }
 
     output.close();
 }
@@ -125,14 +129,12 @@ void run_RPM_verify(){
 int main(int argc, char **argv) {
 
     setlocale(LC_ALL, "Russian");
-    //check_params_count(argc);
+    check_params_count(argc);
 
     if(strcmp(argv[1], "INIT") == 0){
-        run_RPM_verify();
-        //if(argv[2] == NULL) std::cerr << "Недостаточное количество аргументов\n";
-        //start_new_process(argv[2]);
+        generate_initial_rpm_changelist();
     }else if(strcmp(argv[1], "CHECK") == 0){
-        //stop_old_process();
+        run_RPM_verify();
     }else if(strcmp(argv[1], "CLEAR") == 0){
         clear();
     }
