@@ -49,7 +49,7 @@ std::vector<std::string> get_network_processes_pid(){
     std::string line;
 
     while(istream.peek()!='\n' && std::getline(istream, line)){
-        std::istringstream lineStream(rawOutput);
+        std::istringstream lineStream(line);
         std::string tmp, pid;
         for(int i = 0; i < 6; ++i){
             lineStream >> tmp;
@@ -76,8 +76,7 @@ void analyze_process_files_by_pid(std::vector<std::string> pids){
         std::string rawOutput;
         rawOutput = exec(("lsof -p " + it).c_str());
 
-        std::string output = rawOutput.substr(output.find('\n') + 1);
-        fout << output;
+        fout << rawOutput;
     }
 
     fout.close();
